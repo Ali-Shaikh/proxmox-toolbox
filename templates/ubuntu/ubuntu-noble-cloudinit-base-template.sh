@@ -44,14 +44,20 @@ echo "Importing disk image..."
 qm importdisk ${VMID} "${IMAGE_PATH}" ${STORAGE}
 
 # Attach the imported disk as a VirtIO disk on the SCSI controller.
-# (Adjust the disk numbering if needed; here we assume it gets imported as disk-1.)
-qm set $VMID --scsihw virtio-scsi-pci --virtio0 $STORAGE:vm-${VMID}-disk-1,discard=on
+UNUSED_DISK=$(qm config $VMID | awk '/^unused/ {print $2; exit}')
+
+if [ -z "$UNUSED_DISK" ]; then
+    echo "ERROR: Could not find imported disk in VM configuration."
+    exit 1
+fi
+
+qm set $VMID --scsihw virtio-scsi-pci --scsi0 $UNUSED_DISK,discard=on
 
 # Resize the disk by adding 8G
-qm resize ${VMID} virtio0 +8G
+qm resize ${VMID} scsi0 +8G
 
 # Set the boot order so the VM boots from the VirtIO disk.
-qm set $VMID --boot order=virtio0
+qm set $VMID --boot order=scsi0
 
 # Attach a Cloud‑Init drive (under UEFI it is recommended to use SCSI)
 qm set $VMID --scsi1 $STORAGE:cloudinit

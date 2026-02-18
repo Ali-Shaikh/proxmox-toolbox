@@ -59,9 +59,16 @@ qm create ${VMID} \
 
 # Import disk
 qm importdisk ${VMID} "${IMAGE_PATH}" ${STORAGE}
-qm set $VMID --scsihw virtio-scsi-pci --virtio0 $STORAGE:vm-${VMID}-disk-1,discard=on
-qm resize ${VMID} virtio0 ${DISK_ADDITIONAL_SIZE}
-qm set $VMID --boot order=virtio0
+UNUSED_DISK=$(qm config $VMID | awk '/^unused/ {print $2; exit}')
+
+if [ -z "$UNUSED_DISK" ]; then
+    echo "ERROR: Could not find imported disk in VM configuration."
+    exit 1
+fi
+
+qm set $VMID --scsihw virtio-scsi-pci --scsi0 $UNUSED_DISK,discard=on
+qm resize ${VMID} scsi0 ${DISK_ADDITIONAL_SIZE}
+qm set $VMID --boot order=scsi0
 qm set $VMID --scsi1 $STORAGE:cloudinit
 
 # Create snippets directory
