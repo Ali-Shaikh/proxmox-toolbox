@@ -48,7 +48,13 @@ echo "Importing disk image..."
 qm importdisk ${VMID} "${IMAGE_PATH}" ${STORAGE}
 
 # Attach the imported disk as a VirtIO disk on the SCSI controller.
-UNUSED_DISK=$(qm config $VMID | grep -o 'unused[0-9]\+:[^ ]\+' | head -n 1 | cut -d':' -f2-)
+UNUSED_DISK=$(qm config $VMID | awk '/^unused/ {print $2; exit}')
+
+if [ -z "$UNUSED_DISK" ]; then
+    echo "ERROR: Could not find imported disk in VM configuration."
+    exit 1
+fi
+
 qm set $VMID --scsihw virtio-scsi-pci --scsi0 $UNUSED_DISK,discard=on
 
 # Resize the disk by adding the configured amount
